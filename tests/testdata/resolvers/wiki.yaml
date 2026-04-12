@@ -1,0 +1,5 @@
+path: "{article}"
+default: "https://en.wikipedia.org/wiki/{article}"
+geo:
+  FR: "https://fr.wikipedia.org/wiki/{article}"
+  DE: "https://de.wikipedia.org/wiki/{article}"

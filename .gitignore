@@ -6,6 +6,10 @@
 .env
 .env.*
 !.env.example
+config/localhost.yaml
+
+# GeoIP database (downloaded at runtime)
+*.mmdb
 
 # Editor / OS
 .DS_Store

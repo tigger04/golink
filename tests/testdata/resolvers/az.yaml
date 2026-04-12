@@ -1,0 +1,5 @@
+path: "{asin}"
+default: "https://www.amazon.com/dp/{asin}"
+geo:
+  DE: "https://www.amazon.de/dp/{asin}"
+  FR: "https://www.amazon.fr/dp/{asin}"

@@ -1,0 +1,2 @@
+# Local dev overrides. Copy to localhost.yaml and customise.
+# resolvers_dir: "examples/resolvers"

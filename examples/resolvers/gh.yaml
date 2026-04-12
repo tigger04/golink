@@ -1,0 +1,4 @@
+# GitHub shortcut — no geo.
+# {host}/gh/{user}/{repo} → GitHub repo page.
+path: "{user}/{repo}"
+default: "https://github.com/{user}/{repo}"

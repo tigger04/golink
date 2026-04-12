@@ -1,8 +1,6 @@
 # golink
 
-A small self-hosted HTTP redirect service. Domain-agnostic — the binary knows nothing about its public hostname; that is the reverse proxy's concern.
-
-> **Status: v0 hello-world.** This repository currently contains a placeholder hello-world handler used to prove the deploy pipeline to kepler-452. The real resolver layer (geo-aware Amazon ASIN forwarding, GitHub shortcuts, language-aware Wikipedia) lands in a follow-up issue. See [`docs/architecture.md`](docs/architecture.md) for the target design and [`docs/implementation-plan.md`](docs/implementation-plan.md) for the rollout plan.
+A small self-hosted HTTP redirect service. Domain-agnostic - the binary knows nothing about its public hostname; that is the reverse proxy's concern.
 
 ## Quickstart
 
@@ -16,8 +14,14 @@ make build         # builds ./bin/golink for the host OS
 In another terminal:
 
 ```bash
-curl -v http://127.0.0.1:18081/
-# expected: HTTP 200, body "hello from golink dev\n"
+curl -sI http://127.0.0.1:18081/az/B08N5WRWNW
+# expected: HTTP 302, Location: https://www.amazon.com/dp/B08N5WRWNW
+
+curl -sI http://127.0.0.1:18081/gh/torvalds/linux
+# expected: HTTP 302, Location: https://github.com/torvalds/linux
+
+curl -sI http://127.0.0.1:18081/wiki/Linux
+# expected: HTTP 302, Location: https://en.wikipedia.org/wiki/Linux
 ```
 
 The bind address is taken from the environment, in order:
@@ -26,7 +30,7 @@ The bind address is taken from the environment, in order:
 2. `PORT` (port only, bound to `127.0.0.1`)
 3. fallback `127.0.0.1:18081`
 
-This matches the convention enforced by [kepler-452's deploy contract](../../hetzner/kepler-452/docs/PROJECT-INTEGRATION.md).
+This matches the convention enforced by the [deploy contract](../../hetzner/deploy/docs/PROJECT-INTEGRATION.md).
 
 ## Make targets
 
@@ -40,7 +44,7 @@ This matches the convention enforced by [kepler-452's deploy contract](../../het
 | `make status` | `systemctl status golink` + recent journal over Tailscale |
 | `make clean` | Remove build artefacts |
 
-`make deploy` requires a clean working tree (all changes committed and pushed). The build happens on the server — no cross-compilation needed. Expects `~/code/hetzner/kepler-452/deploy-app.sh` to be present (override with `HETZNER_REPO=…`).
+`make deploy` requires a clean working tree (all changes committed and pushed). The build happens on the server - no cross-compilation needed. Expects `~/code/hetzner/kepler-452/deploy-app.sh` to be present (override with `HETZNER_REPO=…`).
 
 ## Deployment
 
@@ -62,7 +66,7 @@ go.tigger.dev {
 }
 ```
 
-The `disable_http_challenge` line is required because port 80 is closed at the Hetzner cloud firewall — Caddy uses TLS-ALPN-01 over port 443 for ACME challenges.
+The `disable_http_challenge` line is required because port 80 is closed at the Hetzner cloud firewall - Caddy uses TLS-ALPN-01 over port 443 for ACME challenges.
 
 ### DNS
 
@@ -72,20 +76,31 @@ Add an `A` record for `go.tigger.dev` pointing at kepler-452's public IPv4 (`87.
 
 ```
 golink/
-├── cmd/golink/main.go       # entrypoint
-├── tests/regression/        # regression tests run by `make test`
-├── tests/one_off/           # one-off tests (none in v0)
-├── docs/                    # architecture, implementation plan
+├── cmd/golink/main.go          # entrypoint
+├── internal/
+│   ├── resolver/               # Resolver interface + templated implementation
+│   ├── router/                 # prefix → resolver dispatch + directory loader
+│   ├── geoip/                  # DB-IP GeoIP wrapper with self-managed lifecycle
+│   └── server/                 # HTTP handler, logging, X-Forwarded-For
+├── examples/resolvers/         # YAML resolver definitions (az, gh, wiki)
+├── config/                     # layered YAML config (defaults + per-host)
+├── tests/regression/           # regression tests run by `make test`
+├── tests/one_off/              # one-off tests
+├── docs/                       # architecture, implementation plan
 ├── Makefile
 ├── go.mod
-└── LICENSE                  # MIT, Copyright Taḋg Paul
+└── LICENSE                     # MIT, Copyright Taḋg Paul
 ```
 
 ## Documentation
 
-- [`docs/architecture.md`](docs/architecture.md) — target architecture for the full v1
-- [`docs/implementation-plan.md`](docs/implementation-plan.md) — phased rollout plan
-- [`docs/VISION.md`](docs/VISION.md) — original vision
+- [`docs/architecture.md`](docs/architecture.md) - target architecture for the full v1
+- [`docs/implementation-plan.md`](docs/implementation-plan.md) - phased rollout plan
+- [`docs/VISION.md`](docs/VISION.md) - original vision
+
+## Acknowledgements
+
+This product includes IP geolocation data created by [DB-IP.com](https://db-ip.com), available under the [Creative Commons Attribution 4.0 International Licence](https://creativecommons.org/licenses/by/4.0/).
 
 ## License
 

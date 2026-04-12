@@ -1,0 +1,2 @@
+path: "{user}/{repo}"
+default: "https://github.com/{user}/{repo}"
