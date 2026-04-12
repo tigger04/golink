@@ -1,0 +1,19 @@
+# Build artefacts
+/bin/
+/tmp/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Go
+*.test
+*.out
+coverage.txt
