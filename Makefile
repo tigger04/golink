@@ -20,7 +20,7 @@ HETZNER_REPO ?= $(HOME)/code/hetzner
 APP          := golink
 PORT         := 18081
 MAIN_PKG     := ./cmd/golink
-DEPLOY_HOST  ?= kepler-452
+DEPLOY_HOST  ?= light-hugger
 
 # Host-OS binary for local development.
 BUILD_OUTPUT := ./bin/$(APP)
