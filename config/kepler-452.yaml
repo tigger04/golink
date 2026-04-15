@@ -1,3 +1,3 @@
-# Production overrides for kepler-452.
-# Defaults are correct for production — resolvers live in the repo at
-# examples/resolvers/, and the working directory is the repo root.
+# Production overrides for kepler-452 (legacy — golink migrated to light-hugger 2026-04-14).
+addr: "127.0.0.1:18081"
+base_url: "https://go.tigger.dev"

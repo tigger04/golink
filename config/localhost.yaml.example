@@ -1,2 +1,3 @@
 # Local dev overrides. Copy to localhost.yaml and customise.
+# addr: "127.0.0.1:18081"
 # resolvers_dir: "examples/resolvers"

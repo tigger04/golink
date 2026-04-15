@@ -26,6 +26,8 @@ var Version = "dev"
 
 // appConfig is the YAML config file schema.
 type appConfig struct {
+	Addr         string `yaml:"addr"`
+	BaseURL      string `yaml:"base_url"`
 	ResolversDir string `yaml:"resolvers_dir"`
 }
 
@@ -72,7 +74,7 @@ func main() {
 	}
 
 	// Start HTTP server.
-	addr := resolveListenAddr()
+	addr := resolveListenAddr(cfg)
 	srv := server.New(server.Config{
 		Addr:   addr,
 		Logger: logger,
@@ -131,9 +133,10 @@ func handleReload(srv *server.Server, geo *geoip.Service, resolversDir string, l
 	logger.Info("reload complete", "prefixes", newRtr.Prefixes())
 }
 
-// loadConfig reads the layered YAML config per the kepler-452 deploy contract.
+// loadConfig reads the layered YAML config per the deploy contract.
 func loadConfig(logger *slog.Logger) appConfig {
 	cfg := appConfig{
+		Addr:         "127.0.0.1:18081",
 		ResolversDir: "examples/resolvers",
 	}
 
@@ -163,18 +166,11 @@ func loadConfig(logger *slog.Logger) appConfig {
 	return cfg
 }
 
-// resolveListenAddr derives the bind address from environment variables, in
-// the order specified by the kepler-452 deploy contract:
-//
-//  1. ADDR (full host:port)
-//  2. PORT (port only, bound to 127.0.0.1)
-//  3. fallback to 127.0.0.1:18081
-func resolveListenAddr() string {
+// resolveListenAddr derives the bind address. ADDR env var (set by systemd)
+// takes priority; otherwise falls back to the addr field from config YAML.
+func resolveListenAddr(cfg appConfig) string {
 	if a := os.Getenv("ADDR"); a != "" {
 		return a
 	}
-	if p := os.Getenv("PORT"); p != "" {
-		return "127.0.0.1:" + p
-	}
-	return "127.0.0.1:18081"
+	return cfg.Addr
 }
