@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tigger04/golink/internal/analytics"
 	"github.com/tigger04/golink/internal/resolver"
 	"github.com/tigger04/golink/internal/router"
 )
@@ -26,8 +27,9 @@ type GeoLookup interface {
 
 // Config holds the server configuration.
 type Config struct {
-	Addr   string
-	Logger *slog.Logger
+	Addr      string
+	Logger    *slog.Logger
+	Analytics *analytics.Store
 }
 
 // Server is the golink HTTP server.
