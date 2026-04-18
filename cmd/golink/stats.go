@@ -21,6 +21,7 @@ func runStats(args []string) {
 	lastFlag := fs.String("last", "", "time range filter (e.g. 24h, 7d, 30d)")
 	csvFlag := fs.Bool("csv", false, "output as CSV")
 	limitFlag := fs.Int("limit", 20, "maximum number of rows")
+	dbFlag := fs.String("db", "", "path to analytics.db (default: $STATE_DIRECTORY/analytics.db)")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: golink stats <report> [flags]\n\n")
@@ -57,11 +58,14 @@ func runStats(args []string) {
 	}
 
 	// Open the analytics database read-only.
-	stateDir := os.Getenv("STATE_DIRECTORY")
-	if stateDir == "" {
-		stateDir = "."
+	dbPath := *dbFlag
+	if dbPath == "" {
+		stateDir := os.Getenv("STATE_DIRECTORY")
+		if stateDir == "" {
+			stateDir = "/var/lib/golink"
+		}
+		dbPath = filepath.Join(stateDir, "analytics.db")
 	}
-	dbPath := filepath.Join(stateDir, "analytics.db")
 	store, err := analytics.OpenReadOnly(dbPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to open analytics database at %s: %v\n", dbPath, err)
