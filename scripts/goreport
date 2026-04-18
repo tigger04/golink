@@ -4,6 +4,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+VERSION="0.3"
 APP="golink"
 SSH_USER="tigger"
 BINARY_PATH="/srv/${APP}/${APP}"
@@ -39,6 +40,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -h|--help)
             usage
+            exit 0
+            ;;
+        --version)
+            echo "goreport ${VERSION}"
             exit 0
             ;;
         -*)
