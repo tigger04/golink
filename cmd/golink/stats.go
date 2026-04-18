@@ -41,7 +41,13 @@ func runStats(args []string) {
 		os.Exit(2)
 	}
 
+	// Handle -h/--help before extracting the report name.
 	report := args[0]
+	if report == "-h" || report == "--help" {
+		fs.Usage()
+		os.Exit(0)
+	}
+
 	if err := fs.Parse(args[1:]); err != nil {
 		os.Exit(2)
 	}
