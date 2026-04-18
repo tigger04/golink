@@ -44,14 +44,14 @@ func Load(data []byte) (*Resolver, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parse YAML: %w", err)
 	}
-	if cfg.Path == "" {
-		return nil, fmt.Errorf("resolver YAML missing required field: path")
-	}
 	if cfg.Default == "" {
 		return nil, fmt.Errorf("resolver YAML missing required field: default")
 	}
 
-	segments := strings.Split(cfg.Path, "/")
+	var segments []string
+	if cfg.Path != "" {
+		segments = strings.Split(cfg.Path, "/")
+	}
 	vars := make([]string, 0, len(segments))
 	for _, seg := range segments {
 		if strings.HasPrefix(seg, "{") && strings.HasSuffix(seg, "}") {
