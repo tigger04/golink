@@ -1,4 +1,4 @@
-<!-- Version: 0.4 | Last updated: 2026-04-11 -->
+<!-- Version: 0.5 | Last updated: 2026-04-18 -->
 
 # Architecture
 
@@ -102,11 +102,17 @@ If the path doesn't match the template (wrong number of segments, etc.), return 
 
 ### `internal/server`
 
-`net/http` wiring, request logging, panic recovery, graceful shutdown. Listens on a configurable port (CLI flag).
+`net/http` wiring, request logging, panic recovery, graceful shutdown, analytics recording. Listens on a configurable address (env var or config YAML).
+
+### `internal/analytics`
+
+SQLite-backed event store (`modernc.org/sqlite`, pure Go, no CGO). Records one row per HTTP request with: timestamp, remote IP, country code, URL prefix, path, HTTP status, redirect target, referer, and user agent. Exposes query methods for the `golink stats` CLI subcommand: top links, recent events, per-link detail with geographic breakdown, top referers, missed links (404s), and unique visitors. All queries accept time-range filters. CSV output for all report types.
+
+The database file lives in `STATE_DIRECTORY` (set by systemd) alongside the GeoIP database. WAL journal mode enables concurrent reads (stats queries) while the server writes.
 
 ## Configuration
 
-There is no global YAML config. Server-level settings are CLI flags:
+Server-level settings come from layered YAML config (defaults + per-host overrides via `CONFIG_PATH` env var) and environment variables:
 
 ```
 golink \
@@ -287,7 +293,6 @@ Because golink downloads the database at runtime rather than bundling it in the 
 ## Out of scope (for v1)
 
 - Authentication / private links
-- Click analytics or persistent storage
 - Per-link expiry
 - Admin UI or API for editing config (config is file-driven, edited by hand or by ops tooling, reloaded via SIGHUP)
 - A/B routing or weighted redirects
