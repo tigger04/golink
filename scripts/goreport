@@ -70,7 +70,8 @@ shift
 case "$command" in
     stats)
         # Forward all remaining args to golink stats on the remote host.
-        remote_cmd="sudo ${BINARY_PATH} stats $*"
+        # Use printf to join args with spaces (IFS is \n\t for safety).
+        remote_cmd="sudo ${BINARY_PATH} stats $(printf '%s ' "$@")"
         ;;
     logs)
         remote_cmd="sudo journalctl -u ${APP} -f"
