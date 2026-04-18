@@ -24,13 +24,11 @@ curl -sI http://127.0.0.1:18081/wiki/Linux
 # expected: HTTP 302, Location: https://en.wikipedia.org/wiki/Linux
 ```
 
-The bind address is taken from the environment, in order:
+The bind address is taken from the environment or config YAML:
 
-1. `ADDR` (full host:port, e.g. `127.0.0.1:18081`)
-2. `PORT` (port only, bound to `127.0.0.1`)
+1. `ADDR` env var (full host:port, set by systemd)
+2. `addr` field in config YAML
 3. fallback `127.0.0.1:18081`
-
-This matches the convention enforced by the [deploy contract](../../hetzner/deploy/docs/PROJECT-INTEGRATION.md).
 
 ## Make targets
 
@@ -39,49 +37,50 @@ This matches the convention enforced by the [deploy contract](../../hetzner/depl
 | `make build` | Build host-OS binary into `./bin/golink` (for local dev) |
 | `make test` | Run lint + regression tests |
 | `make lint` | `go vet ./...` (golangci-lint upgrade tracked in issue #7) |
-| `make deploy` | Push to origin, then git-pull + build on kepler-452 via `deploy-app.sh` |
-| `make logs` | Tail `journalctl -u golink` over Tailscale |
-| `make status` | `systemctl status golink` + recent journal over Tailscale |
+| `make install` | Build and symlink `golink` + `goreport` to `~/.local/bin/` |
+| `make uninstall` | Remove symlinks from `~/.local/bin/` |
 | `make clean` | Remove build artefacts |
-
-`make deploy` requires a clean working tree (all changes committed and pushed). The build happens on the server - no cross-compilation needed. Expects `~/code/hetzner/kepler-452/deploy-app.sh` to be present (override with `HETZNER_REPO=…`).
 
 ## Deployment
 
-golink is deployed to `kepler-452` (a Hetzner VPS on the operator's tailnet) via the deploy machinery in [`~/code/hetzner/kepler-452/`](../../hetzner/kepler-452/). The deploy script handles the systemd unit, sandbox hardening, atomic install, and restart. golink itself ships only the Go binary and this Makefile target.
+Deployment is handled by the hetzner repo's `deploy-app` command. See the [deploy contract](~/code/hetzner/deploy/docs/PROJECT-INTEGRATION.md) for details. This repo owns only the application code, tests, and per-host config in `config/`.
 
-### Caddyfile entry (one-time setup)
+## Analytics
 
-Caddy on kepler-452 needs a site stanza pointing at golink's loopback port. Add the following to `~/code/hetzner/kepler-452/Caddyfile` and run `kepler-452/setup.sh deploy`:
+Every HTTP request is recorded to a local SQLite database (`analytics.db` in the state directory). Query with the built-in stats subcommand:
 
-```caddyfile
-go.tigger.dev {
-    tls {
-        issuer acme {
-            disable_http_challenge
-        }
-    }
-    reverse_proxy 127.0.0.1:18081
-    encode gzip
-}
+```bash
+# On the server directly:
+sudo golink stats top --last 7d
+sudo golink stats link az
+sudo golink stats referers
+sudo golink stats misses
+sudo golink stats unique
+sudo golink stats recent --limit 50
+
+# Remotely via the goreport convenience script:
+goreport light-hugger stats top --last 7d
+goreport light-hugger logs
+goreport light-hugger status
 ```
 
-The `disable_http_challenge` line is required because port 80 is closed at the Hetzner cloud firewall - Caddy uses TLS-ALPN-01 over port 443 for ACME challenges.
-
-### DNS
-
-Add an `A` record for `go.tigger.dev` pointing at kepler-452's public IPv4 (`87.99.147.117`).
+All reports accept `--last <duration>` (e.g. `24h`, `7d`, `30d`) and `--csv` for machine-readable output.
 
 ## Repository layout
 
 ```
 golink/
-├── cmd/golink/main.go          # entrypoint
+├── cmd/golink/
+│   ├── main.go                 # entrypoint, config, server startup
+│   └── stats.go                # stats subcommand for analytics queries
 ├── internal/
+│   ├── analytics/              # SQLite event store + query methods + CSV output
 │   ├── resolver/               # Resolver interface + templated implementation
 │   ├── router/                 # prefix → resolver dispatch + directory loader
 │   ├── geoip/                  # DB-IP GeoIP wrapper with self-managed lifecycle
-│   └── server/                 # HTTP handler, logging, X-Forwarded-For
+│   └── server/                 # HTTP handler, logging, X-Forwarded-For, analytics
+├── scripts/
+│   └── goreport                # SSH convenience wrapper for remote stats/logs/status
 ├── examples/resolvers/         # YAML resolver definitions (az, gh, wiki)
 ├── config/                     # layered YAML config (defaults + per-host)
 ├── tests/regression/           # regression tests run by `make test`
