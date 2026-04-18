@@ -1,3 +1,0 @@
-# Production overrides for kepler-452 (legacy — golink migrated to light-hugger 2026-04-14).
-addr: "127.0.0.1:18081"
-base_url: "https://go.tigger.dev"
