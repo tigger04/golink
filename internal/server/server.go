@@ -105,6 +105,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	clientIP := extractClientIP(r)
 	prefix, remaining := splitPath(r.URL.Path)
+	referer := r.Header.Get("Referer")
+	userAgent := r.Header.Get("User-Agent")
 
 	entry := logEntry{
 		RemoteIP: clientIP.String(),
@@ -116,6 +118,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		entry.Status = 404
 		writeNotFound(w)
 		s.emitLog(entry, start)
+		s.recordAnalytics(start, entry, referer, userAgent)
 		return
 	}
 
@@ -124,6 +127,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		entry.Status = 404
 		writeNotFound(w)
 		s.emitLog(entry, start)
+		s.recordAnalytics(start, entry, referer, userAgent)
 		return
 	}
 
@@ -147,6 +151,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		s.emitLog(entry, start)
+		s.recordAnalytics(start, entry, referer, userAgent)
 		return
 	}
 
@@ -155,6 +160,29 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", result.URL)
 	w.WriteHeader(result.Code)
 	s.emitLog(entry, start)
+	s.recordAnalytics(start, entry, referer, userAgent)
+}
+
+// recordAnalytics writes an event to the analytics store if one is configured.
+// Errors are logged but never affect the HTTP response.
+func (s *Server) recordAnalytics(ts time.Time, entry logEntry, referer, userAgent string) {
+	if s.cfg.Analytics == nil {
+		return
+	}
+	err := s.cfg.Analytics.Record(analytics.Event{
+		TS:        ts,
+		RemoteIP:  entry.RemoteIP,
+		Country:   entry.Country,
+		Prefix:    entry.Prefix,
+		Path:      entry.Path,
+		Status:    entry.Status,
+		Target:    entry.Target,
+		Referer:   referer,
+		UserAgent: userAgent,
+	})
+	if err != nil {
+		s.logger.Error("analytics record failed", "error", err)
+	}
 }
 
 // logEntry is the structured log format for each request.

@@ -7,6 +7,8 @@
 #   build       - build a host-OS binary into ./bin/golink (for local dev)
 #   test        - run lint + regression tests
 #   lint        - run `go vet ./...` (golangci-lint upgrade tracked in #7)
+#   install     - build and symlink golink + goreport to ~/.local/bin
+#   uninstall   - remove symlinks from ~/.local/bin
 #   clean       - remove build artefacts
 
 APP          := golink
@@ -38,6 +40,24 @@ test: lint
 lint:
 	@echo "==> linting"
 	go vet ./...
+
+# ----------------------------------------------------------------------
+# install: symlink golink binary and goreport script to ~/.local/bin
+# ----------------------------------------------------------------------
+.PHONY: install
+install: build
+	@mkdir -p $(HOME)/.local/bin
+	ln -sf $(abspath $(BUILD_OUTPUT)) $(HOME)/.local/bin/golink
+	ln -sf $(abspath scripts/goreport) $(HOME)/.local/bin/goreport
+	@echo "==> installed golink and goreport to ~/.local/bin"
+
+# ----------------------------------------------------------------------
+# uninstall: remove symlinks from ~/.local/bin
+# ----------------------------------------------------------------------
+.PHONY: uninstall
+uninstall:
+	rm -f $(HOME)/.local/bin/golink $(HOME)/.local/bin/goreport
+	@echo "==> removed golink and goreport from ~/.local/bin"
 
 # ----------------------------------------------------------------------
 # clean: remove build artefacts

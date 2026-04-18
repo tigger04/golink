@@ -1,5 +1,6 @@
 // ABOUTME: golink entrypoint. Loads config, initialises GeoIP and resolvers,
 // ABOUTME: starts the HTTP server, and handles SIGHUP reload + SIGTERM shutdown.
+// ABOUTME: Also dispatches the "stats" subcommand for analytics queries.
 
 package main
 
@@ -14,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/tigger04/golink/internal/analytics"
 	"github.com/tigger04/golink/internal/geoip"
 	"github.com/tigger04/golink/internal/router"
 	"github.com/tigger04/golink/internal/server"
@@ -32,6 +34,12 @@ type appConfig struct {
 }
 
 func main() {
+	// Dispatch stats subcommand before flag.Parse() so it gets its own FlagSet.
+	if len(os.Args) > 1 && os.Args[1] == "stats" {
+		runStats(os.Args[2:])
+		return
+	}
+
 	versionFlag := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
@@ -57,11 +65,13 @@ func main() {
 	}
 	logger.Info("resolvers loaded", "prefixes", rtr.Prefixes(), "dir", resolversDir)
 
-	// Initialise GeoIP.
+	// Initialise state directory (shared by GeoIP and analytics).
 	stateDir := os.Getenv("STATE_DIRECTORY")
 	if stateDir == "" {
 		stateDir = "."
 	}
+
+	// Initialise GeoIP.
 	geo := geoip.New(geoip.Config{
 		Dir:    stateDir,
 		Logger: logger,
@@ -73,11 +83,24 @@ func main() {
 		// Non-fatal: service runs without GeoIP.
 	}
 
+	// Initialise analytics.
+	analyticsPath := filepath.Join(stateDir, "analytics.db")
+	store, err := analytics.Open(analyticsPath)
+	if err != nil {
+		logger.Error("analytics: failed to open database", "path", analyticsPath, "error", err)
+		// Non-fatal: service runs without analytics.
+	}
+	if store != nil {
+		defer store.Close()
+		logger.Info("analytics database opened", "path", analyticsPath)
+	}
+
 	// Start HTTP server.
 	addr := resolveListenAddr(cfg)
 	srv := server.New(server.Config{
-		Addr:   addr,
-		Logger: logger,
+		Addr:      addr,
+		Logger:    logger,
+		Analytics: store,
 	}, rtr, geo)
 
 	logger.Info("golink starting", "version", Version, "addr", addr)

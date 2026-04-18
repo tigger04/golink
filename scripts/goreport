@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# ABOUTME: Convenience wrapper that SSHes to a target host over Tailscale
+# ABOUTME: and runs golink stats, logs, or status commands remotely.
+set -euo pipefail
+IFS=$'\n\t'
+
+APP="golink"
+SSH_USER="tigger"
+BINARY_PATH="/srv/${APP}/${APP}"
+
+usage() {
+    cat >&2 <<EOF
+Usage: goreport [--dry-run] <host> <command> [args...]
+
+Commands:
+  stats <report> [flags]   Run golink stats (top, recent, link, referers, misses, unique)
+  logs                     Tail journalctl -u golink -f
+  status                   Show systemctl status + recent journal
+
+Options:
+  --dry-run                Print the SSH command without executing it
+  -h, --help               Show this usage message
+
+Examples:
+  goreport light-hugger stats top --last 7d
+  goreport light-hugger logs
+  goreport light-hugger status
+EOF
+}
+
+dry_run=false
+
+# Parse leading flags.
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run)
+            dry_run=true
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -*)
+            echo "Unknown option: $1" >&2
+            usage
+            exit 2
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [[ $# -lt 2 ]]; then
+    usage
+    exit 2
+fi
+
+host="$1"
+shift
+command="$1"
+shift
+
+case "$command" in
+    stats)
+        # Forward all remaining args to golink stats on the remote host.
+        remote_cmd="sudo ${BINARY_PATH} stats $*"
+        ;;
+    logs)
+        remote_cmd="sudo journalctl -u ${APP} -f"
+        ;;
+    status)
+        remote_cmd="systemctl status ${APP} --no-pager; echo; sudo journalctl -u ${APP} -n 20 --no-pager"
+        ;;
+    *)
+        echo "Unknown command: ${command}" >&2
+        usage
+        exit 2
+        ;;
+esac
+
+if [[ "$dry_run" == true ]]; then
+    echo "ssh ${SSH_USER}@${host} '${remote_cmd}'"
+    exit 0
+fi
+
+exec ssh "${SSH_USER}@${host}" "${remote_cmd}"
