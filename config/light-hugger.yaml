@@ -3,5 +3,4 @@ addr: "127.0.0.1:18081"
 base_url: "https://go.tigger.dev"
 
 extra_domains:
-  - remy2.lobb.ie:/remy
-  - remy.lobb.ie:/remy
+  - remy.tadg.ie:/remy
