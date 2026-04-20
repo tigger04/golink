@@ -1,6 +1,0 @@
-# Production overrides for light-hugger.
-addr: "127.0.0.1:18081"
-base_url: "https://go.lobb.ie"
-
-extra_domains:
-  - remy.lobb.ie:/remy
