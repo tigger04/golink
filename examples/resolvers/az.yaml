@@ -1,5 +1,6 @@
 # Amazon ASIN forwarding — geo-aware.
 # {host}/az/{asin} → local Amazon product page.
+type: templated
 path: "{asin}"
 default: "https://www.amazon.com/dp/{asin}"
 geo:

@@ -1,3 +1,4 @@
+type: templated
 path: "{article}"
 default: "https://en.wikipedia.org/wiki/{article}"
 geo:

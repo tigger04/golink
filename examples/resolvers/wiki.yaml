@@ -1,5 +1,6 @@
 # Wikipedia — geo-aware by language.
 # {host}/wiki/{article} → localised Wikipedia article.
+type: templated
 path: "{article}"
 default: "https://en.wikipedia.org/wiki/{article}"
 geo:

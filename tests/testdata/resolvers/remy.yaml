@@ -1,4 +1,5 @@
 # Book landing page redirect — no geo, no path variables.
 # Caddy rewrites remy.lobb.ie/* to /remy before proxying to golink.
+type: templated
 path: ""
 default: "https://tadg.ie/blog/publications/2026-04-09-remy/"

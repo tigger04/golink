@@ -10,7 +10,9 @@ import (
 	"strings"
 
 	"github.com/tigger04/golink/internal/resolver"
+	"github.com/tigger04/golink/internal/resolver/static"
 	"github.com/tigger04/golink/internal/resolver/templated"
+	"gopkg.in/yaml.v3"
 )
 
 // Router holds an immutable prefix → Resolver map.
@@ -58,7 +60,7 @@ func LoadDir(dir string) (*Router, error) {
 		}
 
 		path := filepath.Join(dir, name)
-		r, err := templated.LoadFile(path)
+		r, err := loadResolver(path)
 		if err != nil {
 			return nil, fmt.Errorf("load resolver %s: %w", name, err)
 		}
@@ -68,4 +70,32 @@ func LoadDir(dir string) (*Router, error) {
 	}
 
 	return New(resolvers), nil
+}
+
+// typeHint peeks at the type field in a YAML file without fully parsing it.
+type typeHint struct {
+	Type string `yaml:"type"`
+}
+
+// loadResolver reads a YAML file and dispatches to the correct resolver
+// implementation based on the type field. Defaults to templated if absent.
+func loadResolver(path string) (resolver.Resolver, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read resolver file: %w", err)
+	}
+
+	var hint typeHint
+	if err := yaml.Unmarshal(data, &hint); err != nil {
+		return nil, fmt.Errorf("peek type in %s: %w", path, err)
+	}
+
+	switch hint.Type {
+	case "static":
+		return static.Load(data)
+	case "templated", "":
+		return templated.Load(data)
+	default:
+		return nil, fmt.Errorf("unknown resolver type %q in %s", hint.Type, path)
+	}
 }
