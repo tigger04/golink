@@ -1,0 +1,6 @@
+# Static resolver test fixture — exact slug-to-URL lookup.
+type: static
+routes:
+  docs: "https://example.com/documentation"
+  blog: "https://example.com/blog"
+default: "https://example.com/not-found"
