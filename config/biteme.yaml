@@ -1,8 +1,8 @@
 # Production overrides for light-hugger.
 addr: "127.0.0.1:18081"
-base_url: "https://go.tigger.dev"
+base_url: "https://go2.tigger.dev"
 resolvers_dir: "golink-resolvers"
 
 extra_domains:
-  - remy.tadg.ie:/remy
-  - go.lobb.ie
+  - remy2.tadg.ie:/remy
+  - go2.lobb.ie

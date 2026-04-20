@@ -76,12 +76,24 @@ else
 endif
 
 # ----------------------------------------------------------------------
-# sync: git add, commit, pull, push
+# sync: git add, commit, pull, push (including submodules)
 # ----------------------------------------------------------------------
 .PHONY: sync
 sync:
+	@git submodule foreach --quiet ' \
+		if [ -n "$$(git status --porcelain)" ]; then \
+			echo "==> syncing submodule: $$name"; \
+			git add --all; \
+			git commit -m "sync"; \
+			git push; \
+		fi \
+	'
 	git add --all
-	git commit -m "sync" || true
+	@if git diff --cached --quiet; then \
+		echo "==> nothing to commit"; \
+	else \
+		git commit -m "sync"; \
+	fi
 	git pull --recurse-submodules
 	git push
 
