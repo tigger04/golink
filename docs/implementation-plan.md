@@ -1,4 +1,4 @@
-<!-- Version: 0.7 | Last updated: 2026-04-18 -->
+<!-- Version: 0.8 | Last updated: 2026-04-22 -->
 
 # Implementation Plan
 
@@ -17,9 +17,9 @@ A working Go binary that runs locally and in CI on Linux:
 - Project skeleton, `go.mod`, MIT `LICENSE`, `THIRD-PARTY-NOTICES.md`, README with quickstart and DB-IP attribution
 - Makefile: `build`, `test`, `lint`, `install`, `uninstall`, `sync`, `release` targets
 - HTTP server with the resolver layer, GeoIP wrapper, structured logging, SIGHUP reload, graceful SIGTERM
-- One YAML-driven templated resolver type
+- Two resolver types: templated (geo-aware URL templates) and static (exact slug-to-URL lookup with internal dispatch)
 - Three example resolver YAMLs (`az.yaml`, `gh.yaml`, `wiki.yaml`) under `examples/resolvers/`
-- Live resolver configs under `resolvers/` (separate from examples)
+- Production resolver configs in a private submodule (`golink-resolvers/`)
 - Self-managed GeoIP database via DB-IP IP-to-Country Lite (download on first start, daily refresh check, monthly refresh cadence)
 - Click analytics: SQLite event store, `golink stats` subcommand with 6 report types, CSV output
 - `goreport` convenience script for remote stats/logs/status over SSH/Tailscale

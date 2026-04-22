@@ -39,6 +39,8 @@ The bind address is taken from the environment or config YAML:
 | `make lint` | `go vet ./...` (golangci-lint upgrade tracked in issue #7) |
 | `make install` | Build and symlink `golink` + `goreport` to `~/.local/bin/` |
 | `make uninstall` | Remove symlinks from `~/.local/bin/` |
+| `make sync` | Git add, commit, pull, push (including submodules) |
+| `make release` | Tag a new version (`VERSION=x.y` or auto-increment by 0.1) |
 | `make clean` | Remove build artefacts |
 
 ## Deployment
@@ -75,13 +77,16 @@ golink/
 │   └── stats.go                # stats subcommand for analytics queries
 ├── internal/
 │   ├── analytics/              # SQLite event store + query methods + CSV output
-│   ├── resolver/               # Resolver interface + templated implementation
+│   ├── resolver/               # Resolver interface
+│   │   ├── templated/          # YAML-driven template resolver (geo-aware)
+│   │   └── static/             # Exact slug-to-URL lookup resolver
 │   ├── router/                 # prefix → resolver dispatch + directory loader
 │   ├── geoip/                  # DB-IP GeoIP wrapper with self-managed lifecycle
 │   └── server/                 # HTTP handler, logging, X-Forwarded-For, analytics
 ├── scripts/
 │   └── goreport                # SSH convenience wrapper for remote stats/logs/status
-├── examples/resolvers/         # YAML resolver definitions (az, gh, wiki)
+├── golink-resolvers/           # private submodule: production resolver YAMLs
+├── examples/resolvers/         # example resolver YAMLs (az, gh, wiki)
 ├── config/                     # layered YAML config (defaults + per-host)
 ├── tests/regression/           # regression tests run by `make test`
 ├── tests/one_off/              # one-off tests

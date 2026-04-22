@@ -1,4 +1,4 @@
-<!-- Version: 0.5 | Last updated: 2026-04-18 -->
+<!-- Version: 0.6 | Last updated: 2026-04-22 -->
 
 # Architecture
 
@@ -11,8 +11,8 @@ The first concrete redirect type the project ships is geo-aware Amazon ASIN forw
 ## Design principles
 
 1. **Redirect-only.** No HTML, no JSON, no bodies. Successful responses are 302. Misses are 404.
-2. **Data-driven.** Each redirect type is described entirely by a YAML file. The Go binary contains one generic resolver implementation; behaviour comes from config.
-3. **Stateless.** No database. Resolver YAMLs and the GeoIP file are loaded at startup and reloaded on SIGHUP.
+2. **Data-driven.** Each redirect type is described entirely by a YAML file. The Go binary contains resolver implementations selected by a `type` field; behaviour comes from config.
+3. **Minimal persistent state.** Resolver YAMLs and the GeoIP file are loaded at startup and reloaded on SIGHUP. Analytics are recorded to a local SQLite database but play no role in the redirect path.
 4. **Single binary.** Built statically with `go build`. Deployed as one file plus a YAML directory and a GeoIP `.mmdb` file. Managed by systemd on the Hetzner host.
 5. **No third-party calls on the request path.** GeoIP is local. Configuration is in memory. The hot path is: parse URL, look up resolver by prefix, extract path variables, optionally look up country, substitute template, write redirect header.
 6. **Extensible by drop-in.** Adding a new redirect type means writing one YAML file and sending SIGHUP. No Go code, no deploy.
@@ -30,21 +30,20 @@ The first concrete redirect type the project ships is geo-aware Amazon ASIN forw
                 +-------------------------+
                 |  Router                 |
                 |  prefix -> resolver     |
+                |  (type dispatch)        |
                 +-----------+-------------+
-                            |
-                            v
-                +-------------------------+
-                |  Templated resolver     |
-                |  (one Go impl,          |
-                |   many YAML configs)    |
-                +-----------+-------------+
-                            |
-                            v
-                +-------------------------+
-                |  GeoIP service          |
-                |  MaxMind GeoLite2       |
-                |  (mmap'd .mmdb file)    |
-                +-------------------------+
+                      |           |
+                      v           v
+              +-----------+  +-----------+
+              | Templated |  |  Static   |
+              | resolver  |  |  resolver |
+              +-----------+  +-----+-----+
+                      |            |
+                      v            | (internal dispatch
+                +----------+       |  for /prefix/path
+                |  GeoIP   |<------+  routes)
+                |  service |
+                +----------+
 ```
 
 ## Why 302 (temporary), not 301 (permanent)
@@ -63,7 +62,7 @@ Wraps `github.com/oschwald/maxminddb-golang` over a DB-IP IP-to-Country Lite dat
 
 ### `internal/router`
 
-Holds an immutable `prefix -> Resolver` map built at startup (and rebuilt on reload). Matches the first path segment. Unknown prefix returns 404. No regex routing.
+Holds an immutable `prefix -> Resolver` map built at startup (and rebuilt on reload). Matches the first path segment. Unknown prefix returns 404. No regex routing. On load, peeks at the `type` field in each YAML to dispatch to the correct resolver implementation (defaults to `templated` if absent). After all resolvers are constructed, wires up static resolvers with an internal lookup function so they can dispatch routes to other resolvers.
 
 ### `internal/resolver`
 
@@ -90,7 +89,7 @@ type Resolver interface {
 
 ### `internal/resolver/templated`
 
-The only resolver implementation in v1. Constructed from a parsed YAML file. Knows how to:
+Constructed from a parsed YAML file. Knows how to:
 
 1. Match the request's remaining path against a `path` template, extracting named variables.
 2. Optionally look up the client's country code.
@@ -99,6 +98,12 @@ The only resolver implementation in v1. Constructed from a parsed YAML file. Kno
 5. Return the result as a 302.
 
 If the path doesn't match the template (wrong number of segments, etc.), return `ErrNotFound`. The resolver does no other validation - it does not, for example, check that an ASIN looks like an ASIN. Amazon will return its own 404 for a malformed identifier. Validation is not our job.
+
+### `internal/resolver/static`
+
+Maps exact path slugs to fixed destination URLs via a `routes` table. No template substitution, no path variables. Routes whose values are absolute URLs (starting with `https://`) are returned directly. Routes whose values start with `/` are resolved internally through the router - the first path segment selects the target resolver, which receives the remainder along with the original request's country code and IP. This enables composition: a static resolver can dispatch to a templated resolver and inherit its geo-awareness in a single redirect hop.
+
+Self-referencing routes (where the target prefix matches the static resolver's own prefix) are rejected with an error.
 
 ### `internal/server`
 
@@ -123,10 +128,13 @@ golink \
 
 All redirect behaviour lives in `*.yaml` files inside the resolvers directory. The filename (minus `.yaml`) becomes the URL prefix.
 
-### Resolver YAML schema
+### Resolver YAML schemas
+
+Every resolver YAML must declare a `type` field. If absent, `templated` is assumed for backward compatibility.
+
+#### Templated resolver
 
 ```yaml
-# Optional. Defaults to "templated". Reserved for future resolver types.
 type: templated
 
 # Path pattern matched against the request path *after* the URL prefix.
@@ -142,6 +150,22 @@ geo:
   DE: "https://example.de/{var1}/{var2}"
   FR: "https://example.fr/{var1}/{var2}"
 ```
+
+#### Static resolver
+
+```yaml
+type: static
+
+# Exact slug-to-URL mapping. Keys are matched against the request path.
+routes:
+  docs: "https://example.com/documentation"
+  book: /az/1234567890        # internal: dispatches to the az resolver
+
+# Optional fallback for slugs not in the routes table.
+default: "https://example.com/not-found"
+```
+
+Routes starting with `/` are resolved internally through the router in a single hop. The first path segment selects the target resolver (e.g. `/az/1234567890` dispatches to the `az` resolver with path `1234567890`). The original request's country code and IP are preserved, so geo-aware resolvers work correctly. Self-referencing routes are rejected.
 
 ## Example resolvers
 
@@ -262,15 +286,13 @@ The body of any non-redirect response is empty. No error pages.
 
 ## Extensibility
 
-To add a new redirect type:
+To add a new redirect:
 
-1. Write a YAML file matching the schema above.
+1. Write a YAML file matching one of the schemas above.
 2. Drop it into the resolvers directory.
 3. `systemctl reload golink`.
 
-That's it. No Go code, no rebuild, no deploy.
-
-When the templated resolver isn't expressive enough for some future use case (e.g. branch on time of day, user-agent, query parameters, multi-step lookups), a second resolver type can be added. YAMLs would then declare `type: <name>` to opt in. The default stays `templated`.
+No Go code, no rebuild, no deploy. The `type` field selects the resolver implementation. Adding a new resolver type requires writing a Go implementation that satisfies the `Resolver` interface, registering it in the router's type dispatch, and rebuilding.
 
 ## Licensing and attribution
 
