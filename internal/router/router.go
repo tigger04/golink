@@ -69,7 +69,28 @@ func LoadDir(dir string) (*Router, error) {
 		resolvers[prefix] = r
 	}
 
-	return New(resolvers), nil
+	rtr := New(resolvers)
+
+	// Wire up internal dispatch for static resolvers now that all resolvers exist.
+	for prefix, res := range resolvers {
+		if sr, ok := res.(*static.Resolver); ok {
+			sr.SetRouter(prefix, rtr.internalResolve)
+		}
+	}
+
+	return rtr, nil
+}
+
+// internalResolve dispatches a path through the router on behalf of a static
+// resolver performing internal dispatch. Returns ErrNotFound if the prefix
+// is not registered.
+func (r *Router) internalResolve(prefix, remaining string, req resolver.Request) (resolver.Result, error) {
+	res := r.resolvers[prefix]
+	if res == nil {
+		return resolver.Result{}, resolver.ErrNotFound
+	}
+	req.Path = remaining
+	return res.Resolve(req)
 }
 
 // typeHint peeks at the type field in a YAML file without fully parsing it.

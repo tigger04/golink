@@ -3,4 +3,5 @@ type: static
 routes:
   docs: "https://example.com/documentation"
   blog: "https://example.com/blog"
+  gocode: /gh/golang/go
 default: "https://example.com/not-found"

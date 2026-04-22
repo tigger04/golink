@@ -4,12 +4,15 @@
 package regression
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 
 	"github.com/tigger04/golink/internal/resolver"
 	"github.com/tigger04/golink/internal/resolver/static"
 	"github.com/tigger04/golink/internal/router"
+	"github.com/tigger04/golink/internal/server"
 )
 
 // Static resolver unit tests — Load from YAML bytes.
@@ -175,6 +178,145 @@ default: "https://example.com/catchall"
 	}
 }
 
+// Internal dispatch tests — routes starting with "/" resolve through another resolver.
+
+func TestStaticResolver_InternalDispatchToTemplated(t *testing.T) {
+	// End-to-end via HTTP: /links/gocode → internal /gh/golang/go → https://github.com/golang/go
+	ts := newTestServer(t, nil)
+	defer ts.Close()
+	client := noRedirectClient()
+
+	resp, err := client.Get(ts.URL + "/links/gocode")
+	if err != nil {
+		t.Fatalf("GET failed: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	loc := resp.Header.Get("Location")
+	want := "https://github.com/golang/go"
+	if loc != want {
+		t.Errorf("Location = %q, want %q", loc, want)
+	}
+	if resp.StatusCode != 302 {
+		t.Errorf("Status = %d, want 302", resp.StatusCode)
+	}
+}
+
+func TestStaticResolver_InternalDispatchGeoAware(t *testing.T) {
+	// Internal route through az resolver should respect geo lookup.
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "buy.yaml"), `
+type: static
+routes:
+  book: /az/1234567890
+`)
+	writeFile(t, filepath.Join(dir, "az.yaml"), `
+type: templated
+path: "{asin}"
+default: "https://www.amazon.com/dp/{asin}"
+geo:
+  DE: "https://www.amazon.de/dp/{asin}"
+`)
+	rtr, err := router.LoadDir(dir)
+	if err != nil {
+		t.Fatalf("LoadDir: %v", err)
+	}
+	geo := &stubGeo{mapping: map[string]string{"1.2.3.4": "DE"}}
+	srv := server.New(server.Config{}, rtr, geo)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+	client := noRedirectClient()
+
+	req, _ := http.NewRequest("GET", ts.URL+"/buy/book", nil)
+	req.Header.Set("X-Forwarded-For", "1.2.3.4")
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("GET failed: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	loc := resp.Header.Get("Location")
+	want := "https://www.amazon.de/dp/1234567890"
+	if loc != want {
+		t.Errorf("Location = %q, want %q", loc, want)
+	}
+}
+
+func TestStaticResolver_InternalDispatchSelfReference(t *testing.T) {
+	// A static resolver that references itself should fail gracefully.
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "loop.yaml"), `
+type: static
+routes:
+  bad: /loop/other
+`)
+	rtr, err := router.LoadDir(dir)
+	if err != nil {
+		t.Fatalf("LoadDir: %v", err)
+	}
+	srv := server.New(server.Config{}, rtr, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+	client := noRedirectClient()
+
+	resp, err := client.Get(ts.URL + "/loop/bad")
+	if err != nil {
+		t.Fatalf("GET failed: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != 500 {
+		t.Errorf("Status = %d, want 500 for self-referencing route", resp.StatusCode)
+	}
+}
+
+func TestStaticResolver_InternalDispatchUnknownPrefix(t *testing.T) {
+	// A route referencing a non-existent resolver should 404.
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "broken.yaml"), `
+type: static
+routes:
+  bad: /nonexistent/something
+`)
+	rtr, err := router.LoadDir(dir)
+	if err != nil {
+		t.Fatalf("LoadDir: %v", err)
+	}
+	srv := server.New(server.Config{}, rtr, nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+	client := noRedirectClient()
+
+	resp, err := client.Get(ts.URL + "/broken/bad")
+	if err != nil {
+		t.Fatalf("GET failed: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != 404 {
+		t.Errorf("Status = %d, want 404 for unknown internal prefix", resp.StatusCode)
+	}
+}
+
+func TestStaticResolver_AbsoluteURLUnaffectedByRouter(t *testing.T) {
+	// Absolute URLs should still work exactly as before, no internal dispatch.
+	ts := newTestServer(t, nil)
+	defer ts.Close()
+	client := noRedirectClient()
+
+	resp, err := client.Get(ts.URL + "/links/docs")
+	if err != nil {
+		t.Fatalf("GET failed: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	loc := resp.Header.Get("Location")
+	want := "https://example.com/documentation"
+	if loc != want {
+		t.Errorf("Location = %q, want %q", loc, want)
+	}
+}
+
 // Integration: LoadDir dispatches static and templated resolvers from mixed directory.
 
 func TestLoadDir_MixedResolverTypes(t *testing.T) {
@@ -193,23 +335,5 @@ func TestLoadDir_MixedResolverTypes(t *testing.T) {
 		if rtr.Lookup(name) == nil {
 			t.Errorf("templated resolver %q not registered", name)
 		}
-	}
-}
-
-func TestLoadDir_StaticResolverIntegration(t *testing.T) {
-	ts := newTestServer(t, nil)
-	defer ts.Close()
-	client := noRedirectClient()
-
-	resp, err := client.Get(ts.URL + "/links/docs")
-	if err != nil {
-		t.Fatalf("GET failed: %v", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	loc := resp.Header.Get("Location")
-	want := "https://example.com/documentation"
-	if loc != want {
-		t.Errorf("Location = %q, want %q", loc, want)
 	}
 }

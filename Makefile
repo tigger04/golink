@@ -81,6 +81,7 @@ endif
 .PHONY: sync
 sync:
 	@git submodule foreach --quiet ' \
+		set -e; \
 		if [ -n "$$(git status --porcelain)" ]; then \
 			echo "==> syncing submodule: $$name"; \
 			git add --all; \
