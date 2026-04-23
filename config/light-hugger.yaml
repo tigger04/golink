@@ -5,6 +5,7 @@ resolvers_dir: "golink-resolvers"
 
 extra_domains:
   - remy.tadg.ie:/remy
+  - math.lobb.ie/math
   - go.lobb.ie
   - go.tadg.ie
   - go.tigger.ie
