@@ -1,0 +1,9 @@
+# Production overrides for light-hugger.
+addr: "127.0.0.1:18081"
+base_url: "https://nixosgo.tigger.dev"
+resolvers_dir: "golink-resolvers"
+
+extra_domains:
+  - nixosremy.tadg.ie:/remy
+  - nixosmath.lobb.ie:/math
+  - nixosgo.lobb.ie
