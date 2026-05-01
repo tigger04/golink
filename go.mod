@@ -1,6 +1,6 @@
 module github.com/tigger04/golink
 
-go 1.25.0
+go 1.25.8
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
