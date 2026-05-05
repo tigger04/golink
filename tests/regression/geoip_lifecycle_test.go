@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tigger04/golink/internal/geoip"
+	"github.com/tadg-paul/golink/internal/geoip"
 )
 
 // serveGzippedFile creates a test HTTP server that serves a gzipped copy of

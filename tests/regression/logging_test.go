@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tigger04/golink/internal/router"
-	"github.com/tigger04/golink/internal/server"
+	"github.com/tadg-paul/golink/internal/router"
+	"github.com/tadg-paul/golink/internal/server"
 )
 
 // RT-6.41: Successful request emits valid JSON log line on stderr

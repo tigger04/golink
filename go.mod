@@ -1,4 +1,4 @@
-module github.com/tigger04/golink
+module github.com/tadg-paul/golink
 
 go 1.25.8
 

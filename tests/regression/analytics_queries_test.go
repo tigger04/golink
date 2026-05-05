@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tigger04/golink/internal/analytics"
+	"github.com/tadg-paul/golink/internal/analytics"
 )
 
 // testEvents returns a standard set of events for query tests.

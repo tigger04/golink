@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tigger04/golink/internal/analytics"
-	"github.com/tigger04/golink/internal/router"
-	"github.com/tigger04/golink/internal/server"
+	"github.com/tadg-paul/golink/internal/analytics"
+	"github.com/tadg-paul/golink/internal/router"
+	"github.com/tadg-paul/golink/internal/server"
 )
 
 // newTestServerWithAnalytics creates an httptest.Server with analytics recording

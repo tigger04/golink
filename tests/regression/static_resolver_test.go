@@ -9,10 +9,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/tigger04/golink/internal/resolver"
-	"github.com/tigger04/golink/internal/resolver/static"
-	"github.com/tigger04/golink/internal/router"
-	"github.com/tigger04/golink/internal/server"
+	"github.com/tadg-paul/golink/internal/resolver"
+	"github.com/tadg-paul/golink/internal/resolver/static"
+	"github.com/tadg-paul/golink/internal/router"
+	"github.com/tadg-paul/golink/internal/server"
 )
 
 // Static resolver unit tests — Load from YAML bytes.

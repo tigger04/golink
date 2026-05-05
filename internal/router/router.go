@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tigger04/golink/internal/resolver"
-	"github.com/tigger04/golink/internal/resolver/static"
-	"github.com/tigger04/golink/internal/resolver/templated"
+	"github.com/tadg-paul/golink/internal/resolver"
+	"github.com/tadg-paul/golink/internal/resolver/static"
+	"github.com/tadg-paul/golink/internal/resolver/templated"
 	"gopkg.in/yaml.v3"
 )
 

@@ -15,10 +15,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/tigger04/golink/internal/analytics"
-	"github.com/tigger04/golink/internal/geoip"
-	"github.com/tigger04/golink/internal/router"
-	"github.com/tigger04/golink/internal/server"
+	"github.com/tadg-paul/golink/internal/analytics"
+	"github.com/tadg-paul/golink/internal/geoip"
+	"github.com/tadg-paul/golink/internal/router"
+	"github.com/tadg-paul/golink/internal/server"
 	"gopkg.in/yaml.v3"
 )
 

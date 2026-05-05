@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/tigger04/golink/internal/router"
+	"github.com/tadg-paul/golink/internal/router"
 )
 
 // RT-6.11: Multiple YAML files all register as routable prefixes

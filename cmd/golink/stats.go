@@ -13,7 +13,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/tigger04/golink/internal/analytics"
+	"github.com/tadg-paul/golink/internal/analytics"
 )
 
 func runStats(args []string) {

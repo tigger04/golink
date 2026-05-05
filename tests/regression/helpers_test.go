@@ -12,8 +12,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/tigger04/golink/internal/router"
-	"github.com/tigger04/golink/internal/server"
+	"github.com/tadg-paul/golink/internal/router"
+	"github.com/tadg-paul/golink/internal/server"
 )
 
 // testdataDir returns the absolute path to tests/testdata/.

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tigger04/golink/internal/resolver"
+	"github.com/tadg-paul/golink/internal/resolver"
 	"gopkg.in/yaml.v3"
 )
 
